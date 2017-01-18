@@ -10,7 +10,8 @@
 
 int _skAssert(char const* msg, char const* file, int line)
 {
-    fprintf(stderr, "(%s:%d) ASSERTION FAILURE: %s\n", file, line, msg);
+    int const relativeFileSkip = (sizeof("../src/")/sizeof(char)) - /*for the \0*/1;
+    fprintf(stderr, "(%s:%d) ASSERTION FAILURE: %s\n", file+relativeFileSkip, line, msg);
     abort();
     return 0;
 }
