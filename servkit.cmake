@@ -1,7 +1,4 @@
 # library : servkit
-
-set(CMAKE_USE_RELATIVE_PATHS TRUE)
-
 # -- Version
 set(servkit_maj_ver 0)
 set(servkit_min_ver 0)
@@ -36,7 +33,7 @@ set(servkit_src
 # -- Targets
 # --- shared
 add_lib(servkit SHARED ${servkit_src} ${servkit_int_hdr} ${servkit_exp_hdr})
-add_lib_build_def(servkit include/servkit/exportsym.h SERVKIT)
+add_lib_build_def(servkit include/servkit/exportsym.h SK)
 add_comp_def(servkit SERVKIT_MAJ=${servkit_maj_ver})
 add_comp_def(servkit SERVKIT_MIN=${servkit_min_ver})
 add_comp_def(servkit SERVKIT_PAT=${servkit_pat_ver})

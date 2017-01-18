@@ -19,6 +19,7 @@ project(servkit)
 
 # -- Include the magic ProjTools
 include(cmake/ProjTools.cmake)
+set(CMAKE_USE_RELATIVE_PATHS TRUE)
 
 # -- Add the subdirectories
 set(PROJ_SUBDIRS  unittest; doc; tools; test)
