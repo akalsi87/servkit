@@ -267,7 +267,7 @@ int skNetCreateSocket(char* err, int domain)
 #define SK_NET_CONNECT_BE_BINDING 2 /* Best effort binding. */
 
 static
-int skNetTcpGenericConnect(char* err, char* addr, int port,
+int skNetTcpGenericConnect(char* err, char const* addr, int port,
                            char* source_addr, int flags)
 {
     int s = SK_NET_ERR, rv;
@@ -350,12 +350,12 @@ end:
     }
 }
 
-int skNetTcpConnect(char* err, char* addr, int port)
+int skNetTcpConnect(char* err, char const* addr, int port)
 {
     return skNetTcpGenericConnect(err,addr,port,NULL,SK_NET_CONNECT_NONE);
 }
 
-int skNetTcpNonBlockConnect(char* err, char* addr, int port)
+int skNetTcpNonBlockConnect(char* err, char const* addr, int port)
 {
     return skNetTcpGenericConnect(err,addr,port,NULL,SK_NET_CONNECT_NONBLOCK);
 }
@@ -374,7 +374,7 @@ int skNetTcpNonBlockBestEffortBindConnect(char* err, char* addr, int port,
             SK_NET_CONNECT_NONBLOCK|SK_NET_CONNECT_BE_BINDING);
 }
 
-int skNetUnixGenericConnect(char* err, char* path, int flags)
+int skNetUnixGenericConnect(char* err, char const* path, int flags)
 {
     int s;
     struct sockaddr_un sa;
@@ -401,7 +401,7 @@ int skNetUnixGenericConnect(char* err, char* path, int flags)
     return s;
 }
 
-int skNetUnixConnect(char* err, char* path)
+int skNetUnixConnect(char* err, char const* path)
 {
     return skNetUnixGenericConnect(err,path,SK_NET_CONNECT_NONE);
 }
@@ -478,7 +478,7 @@ int skNetV6Only(char* err, int s) {
 }
 
 static
-int _skNetTcpServer(char* err, int port, char* bindAddr, int af, int backlog)
+int _skNetTcpServer(char* err, int port, char const* bindAddr, int af, int backlog)
 {
     int s, rv;
     char _port[6];  /* strlen("65535") */
@@ -527,17 +527,17 @@ end:
     return s;
 }
 
-int skNetTcpServer(char* err, int port, char* bindaddr, int backlog)
+int skNetTcpServer(char* err, int port, char const* bindaddr, int backlog)
 {
     return _skNetTcpServer(err, port, bindaddr, AF_INET, backlog);
 }
 
-int skNetTcp6Server(char* err, int port, char* bindaddr, int backlog)
+int skNetTcp6Server(char* err, int port, char const* bindaddr, int backlog)
 {
     return _skNetTcpServer(err, port, bindaddr, AF_INET6, backlog);
 }
 
-int skNetUnixServer(char* err, char* path, mode_t perm, int backlog)
+int skNetUnixServer(char* err, char const* path, mode_t perm, int backlog)
 {
     int s;
     struct sockaddr_un sa;

@@ -18,13 +18,13 @@ SK_API
 /*!
  *
  */
-int skNetTcpConnect(char* err, char* addr, int port);
+int skNetTcpConnect(char* err, char const* addr, int port);
 
 SK_API
 /*!
  *
  */
-int skNetTcpNonBlockConnect(char* err, char* addr, int port);
+int skNetTcpNonBlockConnect(char* err, char const* addr, int port);
 
 SK_API
 /*!
@@ -42,7 +42,7 @@ SK_API
 /*!
  *
  */
-int skNetUnixConnect(char* err, char* path);
+int skNetUnixConnect(char* err, char const* path);
 
 SK_API
 /*!
@@ -72,19 +72,19 @@ SK_API
 /*!
  *
  */
-int skNetTcpServer(char* err, int port, char* bindAddr, int backlog);
+int skNetTcpServer(char* err, int port, char const* bindAddr, int backlog);
 
 SK_API
 /*!
  *
  */
-int skNetTcp6Server(char* err, int port, char* bindAddr, int backlog);
+int skNetTcp6Server(char* err, int port, char const* bindAddr, int backlog);
 
 SK_API
 /*!
  *
  */
-int skNetUnixServer(char* err, char* path, mode_t perm, int backlog);
+int skNetUnixServer(char* err, char const* path, mode_t perm, int backlog);
 
 SK_API
 /*!

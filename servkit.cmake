@@ -18,6 +18,7 @@ set(SRCS src/servkit)
 set(servkit_exp_hdr
     ${INCL}/asserts.h;
     ${INCL}/config.h;
+    ${INCL}/connection.h;
     ${INCL}/likely.h;
     ${INCL}/net.h;
     )
@@ -29,6 +30,7 @@ set(servkit_int_hdr
 # -- Sources
 set(servkit_src
     ${SRCS}/asserts.c;
+    ${SRCS}/connection.c;
     ${SRCS}/net.c;
     )
 
@@ -39,7 +41,9 @@ add_lib_build_def(servkit include/servkit/exportsym.h SK)
 add_comp_def(servkit SERVKIT_MAJ=${servkit_maj_ver})
 add_comp_def(servkit SERVKIT_MIN=${servkit_min_ver})
 add_comp_def(servkit SERVKIT_PAT=${servkit_pat_ver})
+add_comp_flag(servkit -pthread)
 link_libs(servkit )
+add_link_flag(servkit -pthread)
 set_tgt_ver(servkit ${servkit_lib_ver} ${servkit_lib_compat_ver})
 
 # --- static

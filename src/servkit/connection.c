@@ -4,6 +4,9 @@
  */
 
 #include <servkit/connection.h>
+#include <servkit/asserts.h>
+
+#include <string.h>
 
 static
 void skFillOOMError(char* err)
@@ -14,15 +17,16 @@ void skFillOOMError(char* err)
 
 int skConnInitTcpClient(char* err, skConn* conn, char const* serverName, int port)
 {
-    int s = skNetTcpConnect(err,serverName,port);
+    int s = skNetTcpConnect(err, serverName, port);
     if (s != SK_NET_ERR) {
-        char const* serverName = strdup(path);
-        if (!serverName) {
+        char const* srvName = strdup(serverName);
+        if (!srvName) {
             skFillOOMError(err);
             return SK_CONN_ERR;
         }
+        skDbgTraceF(SK_LVL_SUCC, "TCP client fd=%d established to %s:%d.", s, serverName, port);
         conn->kind = SK_TCP_CLIENT;
-        conn->client.serverName = serverName;
+        conn->client.serverName = srvName;
         conn->client.port = port;
         conn->fd = s;
         return SK_CONN_OK;
@@ -51,7 +55,7 @@ int skConnInitUnixClient(char* err, skConn* conn, char const* path)
 
 int skConnInitTcpServer(char* err, skConn* conn, int port, char const* bindAddr, int backlog, int asIpv6)
 {
-    int s = (asIpv6 ? skNetTcp6Server(err,bindAddr,port,backlog) : skNetTcpServer(err,bindAddr,port,backlog));
+    int s = (asIpv6 ? skNetTcp6Server(err,port,bindAddr,backlog) : skNetTcpServer(err,port,bindAddr,backlog));
     if (s != SK_NET_ERR) {
         char const* bindAddrCopy = 0;
         if (bindAddr && !(bindAddrCopy = strdup(bindAddr))) {
@@ -135,9 +139,9 @@ int skConnAccept(char* err, skConn* conn, skConn* client)
     } else {
         char ip[46];
         int port;
-        int s = skNetTcpAccept(err, conn->fd, &ip, sizeof(ip), &port);
+        int s = skNetTcpAccept(err, conn->fd, ip, sizeof(ip), &port);
         if (s != SK_NET_ERR) {
-            char const* serverName = strdup(path);
+            char const* serverName = strdup(ip);
             if (!serverName) {
                 skFillOOMError(err);
                 return SK_CONN_ERR;
