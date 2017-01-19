@@ -6,7 +6,7 @@
 #ifndef _SERVKIT_ASSERTS_H_
 #define _SERVKIT_ASSERTS_H_
 
-#include <servkit/exportsym.h>
+#include <servkit/config.h>
 #include <stdio.h>
 
 SK_API int _skAssert(char const* msg, char const* file, int line);
@@ -54,13 +54,21 @@ void skSetTraceFile(FILE* file);
 #define ANSI_COLOR_RESET
 #endif
 
-#define SK_INFO ANSI_COLOR_RESET  "[INFO] "
-#define SK_WARN ANSI_COLOR_YELLOW "[WARN] "
-#define SK_ERR  ANSI_COLOR_RED    "[ERROR] "
-#define SK_SUCC ANSI_COLOR_GREEN  "[OK] "
+#define SK_LVL_INFO ANSI_COLOR_RESET  "[INFO] "
+#define SK_LVL_WARN ANSI_COLOR_YELLOW "[WARN] "
+#define SK_LVL_ERR  ANSI_COLOR_RED    "[ERROR] "
+#define SK_LVL_SUCC ANSI_COLOR_GREEN  "[OK] "
 
 /*! Tracer */
 #define skTrace(lvl,fmt,...) fprintf(skGetTraceFile(), lvl ANSI_COLOR_RESET fmt "\n", ## __VA_ARGS__)
 #define skTraceF(lvl,fmt,...) _skTracePrintFileLine(lvl, __FILE__, __LINE__); fprintf(skGetTraceFile(), " " ANSI_COLOR_RESET fmt "\n", ## __VA_ARGS__)
+
+#ifndef NDEBUG
+#define skDbgTrace skTrace
+#define skDbgTraceF skTraceF
+#else
+#define skDbgTrace(...) ((void)0)
+#define skDbgTraceF(...) ((void)0)
+#endif
 
 #endif/*_SERVKIT_ASSERTS_H_*/

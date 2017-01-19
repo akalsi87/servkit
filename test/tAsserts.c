@@ -4,6 +4,7 @@
  */
 
 #include "unittest.h"
+#include <servkit/asserts.h>
 
 #include <signal.h>
 #include <setjmp.h>
@@ -20,7 +21,6 @@ void signalHandler(int sig)
     longjmp(jmpPoint, 1);
 }
 
-#include <servkit/asserts.h>
 
 TEST_FUNC( asserts )
 {
@@ -50,14 +50,14 @@ TEST_FUNC( asserts )
 
 TEST_FUNC( traces )
 {
-    skTrace(SK_INFO, "Info");
-    skTrace(SK_WARN, "Warn");
-    skTrace(SK_ERR, "Err");
-    skTrace(SK_SUCC, "Succ");
-    skTraceF(SK_INFO, "Info");
-    skTraceF(SK_WARN, "Warn");
-    skTraceF(SK_ERR, "Err");
-    skTraceF(SK_SUCC, "Succ");
+    skTrace(SK_LVL_INFO, "Info");
+    skTrace(SK_LVL_WARN, "Warn");
+    skTrace(SK_LVL_ERR, "Err");
+    skTrace(SK_LVL_SUCC, "Succ");
+    skTraceF(SK_LVL_INFO, "Info");
+    skTraceF(SK_LVL_WARN, "Warn");
+    skTraceF(SK_LVL_ERR, "Err");
+    skTraceF(SK_LVL_SUCC, "Succ");
 
     TEST_TRUE(skGetTraceFile() == stderr);
     skSetTraceFile(stdout);

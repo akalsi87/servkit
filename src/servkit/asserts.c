@@ -10,9 +10,9 @@
 #include <stdlib.h>
 
 static
-char const* localFile(char const* file)
+char const* removeRootName(char const* file)
 {
-    int numSeps = 2;
+    int numSeps = 3;
     // skip the ../<dir>/
     while (*file != '\0' && numSeps > 0) {
         if (*file == '/' || *file == '\\') {
@@ -25,7 +25,8 @@ char const* localFile(char const* file)
 
 int _skAssert(char const* msg, char const* file, int line)
 {
-    fprintf(stderr, "(%s:%d) ASSERTION FAILURE: %s\n", localFile(file), line, msg);
+    fprintf(stderr, ANSI_COLOR_RED "FAILED ASSERT: " ANSI_COLOR_RESET "(%s:%d) %s\n",
+            removeRootName(file), line, msg);
     abort();
     return 0;
 }
@@ -34,7 +35,7 @@ static FILE* traceFile = 0;
 
 int _skTracePrintFileLine(char const* lvl, char const* file, int line)
 {
-    fprintf(traceFile, "%s (%s:%d)", lvl, localFile(file), line);
+    fprintf(skGetTraceFile(), "%s(%s:%d)", lvl, removeRootName(file), line);
     return 0;
 }
 
