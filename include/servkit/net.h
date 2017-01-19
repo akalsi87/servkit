@@ -102,7 +102,7 @@ SK_API
 /*!
  *
  */
-int skNetWrite(int fd, char* buf, int count);
+int skNetWrite(int fd, char const* buf, int count);
 
 SK_API
 /*!

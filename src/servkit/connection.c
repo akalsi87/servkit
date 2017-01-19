@@ -134,6 +134,7 @@ int skConnAccept(char* err, skConn* conn, skConn* client)
             client->kind = SK_UNIX_CLIENT;
             client->client.serverName = pathCopy;
             client->fd = s;
+            skDbgTraceF(SK_LVL_SUCC, "accepted connection on fd=%d with socket=%d from path %s.", conn->fd, s, pathCopy);
             return SK_CONN_OK;
         }
     } else {
@@ -150,10 +151,22 @@ int skConnAccept(char* err, skConn* conn, skConn* client)
             client->client.serverName = serverName;
             client->client.port = port;
             client->fd = s;
+            skDbgTraceF(SK_LVL_SUCC, "accepted connection on fd=%d with socket=%d from %s:%d.", conn->fd, s, serverName, port);
             return SK_CONN_OK;
         }
     }
     return SK_CONN_ERR;
+}
+
+
+int skConnRead(char* err, skConn* conn, char* buff, int count)
+{
+    return skNetRead(conn->fd, buff, count);
+}
+
+int skConnWrite(char* err, skConn* conn, char const* buff, int count)
+{
+    return skNetWrite(conn->fd, buff, count);
 }
 
 int skConnClose(char* err, skConn* conn)

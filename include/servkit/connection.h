@@ -123,6 +123,18 @@ SK_API
 /*!
  *
  */
+int skConnRead(char* err, skConn* conn, char* buff, int count);
+
+SK_API
+/*!
+ *
+ */
+int skConnWrite(char* err, skConn* conn, char const* buff, int count);
+
+SK_API
+/*!
+ *
+ */
 int skConnClose(char* err, skConn* conn);
 
 /** Tcp APIs */

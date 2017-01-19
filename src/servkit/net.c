@@ -432,7 +432,7 @@ int skNetRead(int fd, char* buf, int count)
 
 /* Like write(2) but make sure 'count' is written before to return
  * (unless error is encountered) */
-int skNetWrite(int fd, char* buf, int count)
+int skNetWrite(int fd, char const* buf, int count)
 {
     ssize_t nWritten, totalLen = 0;
     while(totalLen != count) {
