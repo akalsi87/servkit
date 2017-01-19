@@ -4,6 +4,11 @@
  */
 
 #include "unittest.h"
+
+#if defined(NDEBUG)
+#undef NDEBUG
+#endif
+
 #include <servkit/asserts.h>
 
 #include <signal.h>
