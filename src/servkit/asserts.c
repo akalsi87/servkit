@@ -3,13 +3,14 @@
  * \date Jan 18, 2017
  */
 
+#include <servkit/likely.h>
 #include <servkit/asserts.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 
 static
-char const * localFile(char const* file)
+char const* localFile(char const* file)
 {
     int numSeps = 2;
     // skip the ../<dir>/
@@ -29,8 +30,23 @@ int _skAssert(char const* msg, char const* file, int line)
     return 0;
 }
 
-int _skTracePrintFileLine(char const* file, int line)
+static FILE* traceFile = 0;
+
+int _skTracePrintFileLine(char const* lvl, char const* file, int line)
 {
-    fprintf(stderr, "(%s:%d)", localFile(file), line);
+    fprintf(traceFile, "%s (%s:%d)", lvl, localFile(file), line);
     return 0;
+}
+
+FILE* skGetTraceFile(void)
+{
+    if (SK_UNLIKELY(traceFile == 0)) {
+        traceFile = stderr;
+    }
+    return traceFile;
+}
+
+void skSetTraceFile(FILE* file)
+{
+    traceFile = file;
 }

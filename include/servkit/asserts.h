@@ -9,14 +9,21 @@
 #include <servkit/exportsym.h>
 #include <stdio.h>
 
-SK_API
-/*!
- * Export to be able to debug all asserts.
- */
-int _skAssert(char const* msg, char const* file, int line);
+SK_API int _skAssert(char const* msg, char const* file, int line);
+
+SK_API int _skTracePrintFileLine(char const* lvl, char const* file, int line);
 
 SK_API
-int _skTracePrintFileLine(char const* file, int line);
+/*!
+ * Get the trace file.
+ */
+FILE* skGetTraceFile(void);
+
+SK_API
+/*!
+ * Set the trace file.
+ */
+void skSetTraceFile(FILE* file);
 
 /* Asserts */
 #ifndef NDEBUG
@@ -47,13 +54,13 @@ int _skTracePrintFileLine(char const* file, int line);
 #define ANSI_COLOR_RESET
 #endif
 
-#define SK_INFO ANSI_COLOR_RESET  "[INFO]  "
-#define SK_WARN ANSI_COLOR_YELLOW "[WARN]  "
+#define SK_INFO ANSI_COLOR_RESET  "[INFO] "
+#define SK_WARN ANSI_COLOR_YELLOW "[WARN] "
 #define SK_ERR  ANSI_COLOR_RED    "[ERROR] "
-#define SK_SUCC ANSI_COLOR_GREEN  "[OK]    "
+#define SK_SUCC ANSI_COLOR_GREEN  "[OK] "
 
 /*! Tracer */
-#define skTrace(lvl,fmt,...) fprintf(stderr, lvl ANSI_COLOR_RESET fmt "\n", ## __VA_ARGS__)
-#define skTraceF(lvl,fmt,...) fprintf(stderr, lvl); _skTracePrintFileLine(__FILE__, __LINE__); fprintf(stderr, " " ANSI_COLOR_RESET fmt "\n", ## __VA_ARGS__)
+#define skTrace(lvl,fmt,...) fprintf(skGetTraceFile(), lvl ANSI_COLOR_RESET fmt "\n", ## __VA_ARGS__)
+#define skTraceF(lvl,fmt,...) _skTracePrintFileLine(lvl, __FILE__, __LINE__); fprintf(skGetTraceFile(), " " ANSI_COLOR_RESET fmt "\n", ## __VA_ARGS__)
 
 #endif/*_SERVKIT_ASSERTS_H_*/

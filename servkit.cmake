@@ -17,6 +17,7 @@ set(SRCS src/servkit)
 # export
 set(servkit_exp_hdr
     ${INCL}/asserts.h;
+    ${INCL}/likely.h;
     ${INCL}/net.h;
     )
 
