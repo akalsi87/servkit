@@ -176,7 +176,7 @@ int skNetTcpKeepAlive(char* err, int fd)
 
 /* Set the socket send timeout (SO_SNDTIMEO socket option) to the specified
  * number of milliseconds, or disable it if the 'ms' argument is zero. */
-int skNetSendTimeout(char* err, int fd, long long ms)
+int skNetSendTimeout(char* err, int fd, sk_ll ms)
 {
     struct timeval tv;
 

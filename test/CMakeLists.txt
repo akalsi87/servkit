@@ -7,3 +7,7 @@ create_test     (tNet)
 add_test_exe    (tAsserts tAsserts.c)
 test_link_libs  (tAsserts servkit)
 create_test     (tAsserts)
+
+add_test_exe    (tConnection tConnection.c)
+test_link_libs  (tConnection servkit)
+create_test     (tConnection)

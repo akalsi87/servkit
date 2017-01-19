@@ -138,7 +138,7 @@ SK_API
 /*!
  *
  */
-int skNetSendTimeout(char* err, int fd, long long ms);
+int skNetSendTimeout(char* err, int fd, sk_ll secs);
 
 SK_API
 /*!
