@@ -13,7 +13,7 @@ static
 char const* removeRootName(char const* file)
 {
     int numSeps = 3;
-    // skip the ../<dir>/
+    // skip the ../[src|include|..]/[servkit|servkit|test]
     while (*file != '\0' && numSeps > 0) {
         if (*file == '/' || *file == '\\') {
             --numSeps;

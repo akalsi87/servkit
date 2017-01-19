@@ -26,7 +26,6 @@ void signalHandler(int sig)
     longjmp(jmpPoint, 1);
 }
 
-
 TEST_FUNC( asserts )
 {
     typedef void(*signalHandleFunc)(int);
