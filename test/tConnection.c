@@ -17,7 +17,7 @@ const int port = 37001;
 static skConn server;
 static skConn request;
 
-static char const msg[] = "Hello Client!";
+static char const msg[] = "Hello Client!\n";
 #define msgSize sizeof(msg)-1
 static char myMsg[msgSize];
 
@@ -33,7 +33,7 @@ void* clientThread(void* arg)
         skDbgTraceF(SK_LVL_ERR, "Could not read message on clientThread.");
         return "";
     }
-    skDbgTraceF(SK_LVL_INFO, "Received message: %.*s", (int)msgSize, myMsg);
+    skDbgTraceF(SK_LVL_INFO, "Received message:\n%.*s", (int)msgSize, myMsg);
     skConnClose(myErr, &myConn);
     return myMsg;
 }
@@ -42,7 +42,6 @@ TEST_FUNC( serverAndClientHandshake )
 {
     char errBuf[SK_CONN_ERR_LEN];
     pthread_t thrd;
-    char const msg[] = "Hello Client!";
     void* res;
     TEST_TRUE(skConnInitTcpServer(errBuf, &server, port, "localhost", 1, 0) == SK_CONN_OK);
     TEST_TRUE(pthread_create(&thrd, 0, clientThread, 0) == 0);
