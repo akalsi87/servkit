@@ -15,15 +15,16 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 #include <pwd.h>
 
 static char errBuf[SK_CONN_ERR_LEN];
 static skConn server;
-static skConn request;
 
-static int fd = 0;
+static char const* exename = 0;
+static char const* dirnm = 0;
 static char const* hostname = "localhost";
-static int port = 37000;
+static int port = 8080;
 static char const* username = 0;
 
 #define errorAndDie(code, ...) \
@@ -42,7 +43,22 @@ typedef struct
     char shortId;
     char const* longId;
     arg_cbk_t cbk;
+    char const* descr;
+    int args;
 } arg_t;
+
+static
+void setExeName(char const* val)
+{
+    int i = strlen(val)-1;
+    for (;i >= 0; --i) {
+        if (val[i] == '/') {
+            exename = val+i+1;
+            break;
+        }
+    }
+    exename = (i == -1) ? val : (val+i+1);
+}
 
 static
 void setHostname(char const* val)
@@ -63,7 +79,14 @@ void setPort(char const* val)
 static
 void setCurrDir(char const* val)
 {
-    int rv = chdir(val);
+    dirnm = val;
+}
+
+static
+void changeCurrDir()
+{
+    if (!dirnm) return;
+    int rv = chdir(dirnm);
     if (rv != 0) {
         errorAndDie(1, "%s.", strerror(rv));
     }
@@ -74,6 +97,9 @@ void setUserName(char const* val)
 {
     username = val;
 }
+
+static
+void printUsage(char const* val);
 
 static
 void changeUserName()
@@ -94,22 +120,46 @@ void changeUserName()
 
 static const arg_t opts[] =
 {
-    {'p', "port", setPort},
-    {'h', "host", setHostname},
-    {'d', "dir", setCurrDir},
-    {'u', "user", setUserName}
+    {'h', "help", printUsage, "This menu.", 0},
+    {'p', "port", setPort, "Port to bind to.", 1},
+    {'n', "host", setHostname, "Hostname to bind to.", 1},
+    {'d', "dir", setCurrDir, "Directory to serve.", 1},
+    {'u', "user", setUserName, "User to serve files as after binding.", 1}
 };
+
+static
+void usage()
+{
+    int const numOpts = sizeof(opts)/sizeof(opts[0]);
+    printf("Usage for %s\n  %s ", exename, exename);
+    for (int i = 0; i < numOpts; ++i) {
+        if (opts[i].args == 0) {
+            printf("[-%c|--%s] ", opts[i].shortId, opts[i].longId);
+        } else {
+            printf("[-%c|--%s <%s>] ", opts[i].shortId, opts[i].longId, opts[i].longId);
+        }
+    }
+    puts("\nOption descriptions:");
+    for (int i = 0; i < numOpts; ++i) {
+        printf("  %s: %s\n", opts[i].longId, opts[i].descr);
+    }
+    exit(0);
+}
+
+static
+void printUsage(char const* val)
+{
+    usage();
+}
 
 static
 void parseArguments(int argc, char const* argv[])
 {
+    setExeName(argv[0]);
     --argc; // for main executable
     ++argv;
-    if (argc % 2 != 0) {
-        errorAndDie(1, "Expected pairs of options and values.");
-    }
     int const numArgs = sizeof(opts)/sizeof(arg_t);
-    for (int arg = 0; arg < argc; arg += 2) {
+    for (int arg = 0; arg < argc;) {
         char const* strArg = argv[arg];
         int strLen = (int)strlen(strArg);
         if (strLen < 2) {
@@ -124,7 +174,8 @@ void parseArguments(int argc, char const* argv[])
         for (; i < numArgs; ++i) {
             if (((strLen == 2) && opts[i].shortId == strArg[1]) ||
                 (strcmp(opts[i].longId, strArg+2) == 0)) {
-                opts[i].cbk(argv[arg+1]);
+                opts[i].cbk(opts[i].args == 0 ? 0 : argv[arg+1]);
+                arg += 1+opts[i].args;
                 break;
             }
         }
@@ -139,65 +190,51 @@ void createServer()
 {
     dieUnless(skConnInitTcpServer(errBuf, &server, port, hostname, 1, 0) == SK_CONN_OK);
     changeUserName();
+    changeCurrDir();
 }
 
 static
-void acceptConn()
-{
-    dieUnless(skConnAccept(errBuf, &server, &request) == SK_CONN_OK);
-}
-
-static
-void writeHeaders()
+void writeHeaders(skConn const* req)
 {
     char buf[1024];
     // (void)filename;  /* could use filename to determine file type */
 
     strcpy(buf, "HTTP/1.0 200 OK\r\n");
-    write(request.fd, buf, strlen(buf));
+    write(req->fd, buf, strlen(buf));
     strcpy(buf, "Server: catHttpServer/0.1.0\r\n");
-    write(request.fd, buf, strlen(buf));
+    write(req->fd, buf, strlen(buf));
     strcpy(buf, "Content-Type: text/html\r\n\r\n");
-    write(request.fd, buf, strlen(buf));
+    write(req->fd, buf, strlen(buf));
 }
 
 static
-void serveFileByChar()
+void serveFile(skConn const* req, int fd)
 {
-    writeHeaders();
+    writeHeaders(req);
     int rv;
-    char ch[2];
+    char buff[4096];
     do {
-        rv = skNetRead(fd, ch, 1);
+        rv = skNetRead(fd, buff, 4096);
         if (rv == SK_NET_ERR) {
             strcpy(errBuf, strerror(rv));
         }
         dieUnless(rv != SK_NET_ERR);
-        dieUnless(write(request.fd, ch, 1) != SK_CONN_ERR);
+        dieUnless(write(req->fd, buff, rv) != SK_CONN_ERR);
     } while (rv != 0);
-}
-
-// static
-// void serveFileByLine()
-// {
-
-// }
-
-static
-void serveFile()
-{
-    // if (fd == 0) {
-        serveFileByChar();
-    // } else {
-        // serveFileByLine();
-    // }
 }
 
 void run(void)
 {
     createServer();
-    acceptConn();
-    serveFile();
+    while (1) {
+        skConn req;
+        int fd;
+        dieUnless(skConnAccept(errBuf, &server, &req) == SK_CONN_OK);
+        fd = open("foo.txt", 0);
+        serveFile(&req, fd);
+        close(fd);
+        dieUnless(skConnClose(errBuf, &req) == SK_CONN_OK);
+    }
 }
 
 int main(int argc, char const* argv[])
