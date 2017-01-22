@@ -172,6 +172,7 @@ int skConnWrite(char* err, skConn* conn, char const* buff, int count)
 
 int skConnClose(char* err, skConn* conn)
 {
+    if (conn->fd == -1) return SK_NET_OK;
     if (skNetClose(err, conn->fd) != SK_NET_ERR) {
         char const** strPtr = 0;
         conn->fd = -1;

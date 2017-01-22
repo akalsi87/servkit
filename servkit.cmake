@@ -56,7 +56,7 @@ set_tgt_ver(servkit ${servkit_lib_ver} ${servkit_lib_compat_ver})
 #set_tgt_ver(servkit_s ${servkit_lib_ver} ${servkit_lib_compat_ver})
 
 # --- add catHttpServer
-add_exe(catHttpServer catHttpServer/catHttpServer.c)
+add_exe(catHttpServer src/catHttpServer/catHttpServer.c)
 link_libs(catHttpServer servkit)
 
 # -- Install!

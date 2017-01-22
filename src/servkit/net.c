@@ -435,13 +435,19 @@ int skNetRead(int fd, char* buf, int count)
 int skNetWrite(int fd, char const* buf, int count)
 {
     ssize_t nWritten, totalLen = 0;
+    int err;
     while(totalLen != count) {
         nWritten = write(fd,buf,count-totalLen);
         if (nWritten == 0) {
             return totalLen;
         }
         if (nWritten == -1) {
-            return -1;
+            if (((err = errno) != EWOULDBLOCK) && (err != EAGAIN)) {
+                skDbgTraceF(SK_LVL_WARN, "Failure writing data: %s.", strerror(errno));
+                return -1;
+            } else {
+                continue;
+            }
         }
         totalLen += nWritten;
         buf += nWritten;

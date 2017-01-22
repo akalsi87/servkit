@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <pwd.h>
+#include <signal.h>
 
 static char errBuf[SK_CONN_ERR_LEN];
 static skConn server;
@@ -30,6 +31,7 @@ static char const* username = 0;
 #define errorAndDie(code, ...) \
   { \
       skTrace(SK_LVL_ERR, ## __VA_ARGS__); \
+      fflush(stderr); \
       exit(code); \
   }
 
@@ -186,55 +188,149 @@ void parseArguments(int argc, char const* argv[])
 }
 
 static
-void createServer()
+void handleIntr(int sig)
 {
-    dieUnless(skConnInitTcpServer(errBuf, &server, port, hostname, 1, 0) == SK_CONN_OK);
-    changeUserName();
-    changeCurrDir();
+    exit(0);
 }
 
 static
-void writeHeaders(skConn const* req)
+void createServer()
+{
+    dieUnless(skConnInitTcpServer(errBuf, &server, port, hostname, 200, 0) == SK_CONN_OK);
+    // dieUnless(skNetNonBlock(errBuf, server.fd));
+    changeUserName();
+    changeCurrDir();
+    signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT, handleIntr);
+}
+
+static
+void writeHeaders(skConn* req)
 {
     char buf[1024];
+    int len;
     // (void)filename;  /* could use filename to determine file type */
 
     strcpy(buf, "HTTP/1.0 200 OK\r\n");
-    write(req->fd, buf, strlen(buf));
+    len = strlen(buf);
+    if (skConnWrite(errBuf, req, buf, len) < len) {
+        dieUnless(skConnClose(errBuf, req) == SK_CONN_OK);
+        return;
+    }
     strcpy(buf, "Server: catHttpServer/0.1.0\r\n");
-    write(req->fd, buf, strlen(buf));
+    len = strlen(buf);
+    if (skConnWrite(errBuf, req, buf, len) < len) {
+        dieUnless(skConnClose(errBuf, req) == SK_CONN_OK);
+        return;
+    }
     strcpy(buf, "Content-Type: text/html\r\n\r\n");
-    write(req->fd, buf, strlen(buf));
+    len = strlen(buf);
+    if (skConnWrite(errBuf, req, buf, len) < len) {
+        dieUnless(skConnClose(errBuf, req) == SK_CONN_OK);
+        return;
+    }
+    strcpy(buf, "\r\n");
+    len = strlen(buf);
+    if (skConnWrite(errBuf, req, buf, len) < len) {
+        dieUnless(skConnClose(errBuf, req) == SK_CONN_OK);
+        return;
+    }
 }
 
 static
-void serveFile(skConn const* req, int fd)
+void serveFile(skConn* req, int fd)
 {
-    writeHeaders(req);
     int rv;
     char buff[4096];
+    dieUnless(skNetNonBlock(errBuf, req->fd) == SK_NET_OK);
+    writeHeaders(req);
+    // dieUnless(skConnSetSendTimeout(errBuf, req, 1) != SK_NET_OK);
     do {
         rv = skNetRead(fd, buff, 4096);
         if (rv == SK_NET_ERR) {
             strcpy(errBuf, strerror(rv));
         }
         dieUnless(rv != SK_NET_ERR);
-        dieUnless(write(req->fd, buff, rv) != SK_CONN_ERR);
+        if (skNetWrite(req->fd, buff, rv) < rv) {
+            break;
+        }
     } while (rv != 0);
 }
 
+static
+int readLine(skConn const* req, char* buff, int size)
+{
+    char* buffOrig = buff;
+    while (1) {
+        char ch;
+        int rv = recv(req->fd, &ch, 1, 0);
+        if (rv == SK_NET_ERR && errno != EWOULDBLOCK && errno != EAGAIN) {
+            strcpy(errBuf, strerror(errno));
+            dieUnless(0);
+        }
+        if (rv == SK_NET_ERR && errno == EPIPE) {
+            return -1;
+        }
+        *buff++ = ch;
+        if (ch == '\n') {
+            *buff = '\0';
+            break;
+        }
+    }
+    return buff-buffOrig;
+}
+
+static char* line = 0;
+static int cap = 0;
+
 void run(void)
 {
+  // recreate_server:
     createServer();
+    if (!line) {
+        cap = 81;
+        line = malloc(cap);
+    }
     while (1) {
         skConn req;
         int fd;
+        int numRead = 0;
+        int thisTime = 0;
+
         dieUnless(skConnAccept(errBuf, &server, &req) == SK_CONN_OK);
+        // dieUnless(skNetNonBlock(errBuf, req.fd) != SK_CONN_ERR);
+
+        while (1) {
+            if (numRead == cap) {
+                int newcap = 2*cap-1;
+                char* newline = realloc(line, newcap);
+                dieUnless(newline != 0);
+                line = newline;
+                cap = newcap;
+            }
+            thisTime = readLine(&req, &line[numRead], cap-numRead);
+            if (thisTime == -1) {
+                goto closeRequestConn;
+            }
+            numRead += thisTime;
+            if ((thisTime == 1 && line[numRead-1] == '\n') ||
+                (thisTime == 2 && line[numRead-2] == '\r' && line[numRead-1] == '\n')) {
+                break;
+            }
+        }
+        skDbgTraceF(SK_LVL_SUCC, "Read header from fd=%d\n%s<---", req.fd, line);
+        line[0] = '\0';
         fd = open("foo.txt", 0);
+        if (fd == -1) {
+            skTraceF(SK_LVL_WARN, "Could not open file.");
+            goto closeRequestConn;
+        }
         serveFile(&req, fd);
         close(fd);
+  closeRequestConn:
         dieUnless(skConnClose(errBuf, &req) == SK_CONN_OK);
     }
+    free(line);
 }
 
 int main(int argc, char const* argv[])
