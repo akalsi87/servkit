@@ -46,7 +46,7 @@ void skNetSetError(char* err, const char* fmt, ...)
     va_start(ap, fmt);
     vsnprintf(err, SK_NET_ERR_LEN, fmt, ap);
     va_end(ap);
-    skDbgTraceF(SK_LVL_ERR, "%s", err);
+    // skDbgTraceF(SK_LVL_WARN, "%s", err);
 }
 
 int skNetSetBlock(char* err, int fd, int non_block)
@@ -739,8 +739,7 @@ int skNetClose(char* err, int fd)
         if (rv == EINTR) {
             skNetSetError(err, "close(fd) with fd=%d failed when interrupted by signal().", fd);
         } else {
-            skAssert(rv == EIO);
-            skNetSetError(err, "close(fd) with fd=%d failed with EIO.", fd);
+            skNetSetError(err, "close(fd) with fd=%d failed with errno=%d, msg=%s.", fd, errno, strerror(errno));
         }
         rv = SK_NET_ERR;
     }

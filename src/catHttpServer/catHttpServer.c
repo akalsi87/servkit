@@ -503,6 +503,9 @@ int catHttpServerReadLine(catHttpServer* server, skConn const* req, char* buff, 
                 continue;
             }
         }
+        if (rv == 0) {
+            break;
+        }
         *buff++ = ch;
         if (ch == '\n') {
             *buff = '\0';
@@ -666,6 +669,10 @@ void catHttpServerLoop(catHttpServer* server)
                 if (thisTime == -1) {
                     goto closeRequestConn;
                 }
+                if (thisTime == 0) {
+                    skTraceF(SK_LVL_WARN, "Connection fd=%d was abruptly disconnected. Closing.", req.fd);
+                    goto closeRequestConn;
+                }
                 numRead += thisTime;
                 if ((thisTime == 1 && line[numRead-1] == '\n') ||
                     (thisTime == 2 && line[numRead-2] == '\r' && line[numRead-1] == '\n')) {
@@ -674,7 +681,7 @@ void catHttpServerLoop(catHttpServer* server)
             }
             skDbgTraceF(SK_LVL_SUCC, "Read header from fd=%d\n%s<---", req.fd, line);
             line[0] = '\0';
-            fd = open("foo.txt", 0);
+            fd = open("index.html", 0);
             if (fd == -1) {
                 skTraceF(SK_LVL_WARN, "Could not open file.");
                 goto closeRequestConn;
