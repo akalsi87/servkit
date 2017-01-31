@@ -22,6 +22,8 @@
 #include <pwd.h>
 #include <signal.h>
 
+#include <pthread.h>
+
 // static char errBuf[SK_CONN_ERR_LEN];
 // static skConn server;
 
@@ -611,15 +613,108 @@ void catHttpServerParseOptions(catHttpServer* server, int argc, char const* argv
 }
 
 static
+void catHttpServerHandleAccept(catHttpServer * server, skConn req)
+{
+    char* line = 0;
+    int cap = 81;
+    int fd;
+    int numRead = 0;
+    int thisTime = 0;
+
+    line = malloc(cap);
+    if (!line) {
+        skTraceF(SK_LVL_ERR, "Out of memory!");
+        return;
+    }
+
+    // dieUnless(skConnAccept(errBuf, &server, &req) == SK_CONN_OK);
+    if (skNetNonBlock(&server->errBuf[0], req.fd) == SK_CONN_ERR) {
+        skTraceF(SK_LVL_WARN, "Could not set non blocking; fd=%d", req.fd);
+        goto closeRequestConn;
+    }
+
+    while (1) {
+        if (numRead == cap) {
+            int newcap = 2*cap-1;
+            char* newline = realloc(line, newcap);
+            if (newline == 0) {
+                catHttpServerSetErrorMsg(server, 1, "Out of memory");
+                return;
+            }
+            line = newline;
+            cap = newcap;
+        }
+        thisTime = catHttpServerReadLine(server, &req, &line[numRead], cap-numRead);
+        if (thisTime == -1) {
+            goto closeRequestConn;
+        }
+        if (thisTime == 0) {
+            skTraceF(SK_LVL_WARN, "Connection fd=%d was abruptly disconnected. Closing.", req.fd);
+            goto closeRequestConn;
+        }
+        numRead += thisTime;
+        if ((thisTime == 1 && line[numRead-1] == '\n') ||
+            (thisTime == 2 && line[numRead-2] == '\r' && line[numRead-1] == '\n')) {
+            break;
+        }
+    }
+
+    skDbgTraceF(SK_LVL_SUCC, "Read header from fd=%d\n%s<---", req.fd, line);
+    line[0] = '\0';
+    fd = open("index.html", 0);
+    if (fd == -1) {
+        skTraceF(SK_LVL_WARN, "Could not open file.");
+        goto closeRequestConn;
+    }
+
+    catHttpServerServeFile(server, &req, fd);
+    close(fd);
+
+  closeRequestConn:
+    if (skNetClose(&server->errBuf[0], req.fd) == SK_CONN_ERR) {
+        skTraceF(SK_LVL_WARN, "Could not close fd=%d", req.fd);
+    }
+    free(line);
+}
+
+typedef struct
+{
+    catHttpServer * server;
+    skConn req;
+} threadTask;
+
+static
+void* mtAccept(void* value)
+{
+    threadTask* task = (threadTask*)value;
+    catHttpServerHandleAccept(task->server, task->req);
+    free(task);
+    return 0;
+}
+
+static
+void catHttpServerHandleAcceptThread(catHttpServer * server, skConn req)
+{
+    pthread_t thrd;
+    threadTask* arg = malloc(sizeof(threadTask));
+    if (!arg) {
+        skTraceF(SK_LVL_ERR, "Out of memory!");
+        return;
+    }
+    arg->server = server;
+    arg->req = req;
+    pthread_create(&thrd, 0, mtAccept, arg);
+    pthread_detach(thrd);
+}
+
+static
 void catHttpServerLoop(catHttpServer* server)
 {
     FD_SET(server->server.fd, &server->listenerFds);
-    char* line = 0;
-    int cap = 0;
     for (;;) {
         skConn req;
         struct timeval timeout = {0, 50};
-      acceptNewConn:
+      //acceptNewConn:
         if (select(1, &server->listenerFds, 0, 0, &timeout) == -1) {
             if (errno == EWOULDBLOCK || errno == EAGAIN || errno == ETIMEDOUT) {
                 continue;
@@ -634,68 +729,15 @@ void catHttpServerLoop(catHttpServer* server)
         //     skTraceF(SK_LVL_WARN, "Failed to set socket non-blocking; fd=%d", server->server.fd);
         //     continue;
         // }
+
         if (skConnAccept(&server->errBuf[0], &server->server, &req) == SK_CONN_ERR) {
-            goto acceptNewConn;
             skTraceF(SK_LVL_WARN, "Failed to accept connection; fd=%d", server->server.fd);
-            continue;
+            return;
         }
-        if (!line) {
-            cap = 81;
-            line = malloc(cap);
-        }
-        {
-            int fd;
-            int numRead = 0;
-            int thisTime = 0;
 
-            // dieUnless(skConnAccept(errBuf, &server, &req) == SK_CONN_OK);
-            if (skNetNonBlock(&server->errBuf[0], req.fd) == SK_CONN_ERR) {
-                skTraceF(SK_LVL_WARN, "Could not set non blocking; fd=%d", req.fd);
-                goto closeRequestConn;
-            }
-
-            while (1) {
-                if (numRead == cap) {
-                    int newcap = 2*cap-1;
-                    char* newline = realloc(line, newcap);
-                    if (newline == 0) {
-                        catHttpServerSetErrorMsg(server, 1, "Out of memory");
-                        return;
-                    }
-                    line = newline;
-                    cap = newcap;
-                }
-                thisTime = catHttpServerReadLine(server, &req, &line[numRead], cap-numRead);
-                if (thisTime == -1) {
-                    goto closeRequestConn;
-                }
-                if (thisTime == 0) {
-                    skTraceF(SK_LVL_WARN, "Connection fd=%d was abruptly disconnected. Closing.", req.fd);
-                    goto closeRequestConn;
-                }
-                numRead += thisTime;
-                if ((thisTime == 1 && line[numRead-1] == '\n') ||
-                    (thisTime == 2 && line[numRead-2] == '\r' && line[numRead-1] == '\n')) {
-                    break;
-                }
-            }
-            skDbgTraceF(SK_LVL_SUCC, "Read header from fd=%d\n%s<---", req.fd, line);
-            line[0] = '\0';
-            fd = open("index.html", 0);
-            if (fd == -1) {
-                skTraceF(SK_LVL_WARN, "Could not open file.");
-                goto closeRequestConn;
-            }
-            catHttpServerServeFile(server, &req, fd);
-            close(fd);
-      closeRequestConn:
-            if (skNetClose(&server->errBuf[0], req.fd) == SK_CONN_ERR) {
-                skTraceF(SK_LVL_WARN, "Could not close fd=%d", req.fd);
-            }
-        }
+        catHttpServerHandleAcceptThread(server, req);
     }
     FD_CLR(server->server.fd, &server->listenerFds);
-    free(line);
 }
 
 static
