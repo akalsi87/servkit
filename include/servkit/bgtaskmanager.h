@@ -28,20 +28,20 @@ typedef struct
     skBgConsumer consumerFunc;
     skBgConsumerDataDestroy consumerDataDestroyer;
     int numThreads;
+    int shutdown;
     void* mutex;
     void* cndVar;
     skBgTaskNode head;
-    int shutdown;
 } skBgTaskManager;
 
 SK_API
 /*!
  *
  */
-int skBgTaskManagerCreate(skBgTaskManager* mgr, int numThreads,
-                          skBgConsumerDataCreate dataCreate,
-                          skBgConsumerDataDestroy dataDestroy,
-                          skBgConsumer consumer);
+int skBgTaskManagerInit(skBgTaskManager* mgr, int numThreads,
+                        skBgConsumerDataCreate dataCreate,
+                        skBgConsumerDataDestroy dataDestroy,
+                        skBgConsumer consumer);
 
 SK_API
 /*!

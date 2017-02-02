@@ -15,3 +15,7 @@ add_test_exe    (tConnection tConnection.c)
 test_link_libs  (tConnection servkit)
 add_link_flag   (tConnection -pthread)
 create_test     (tConnection)
+
+add_test_exe    (tBgTaskManager tBgTaskManager.c)
+test_link_libs  (tBgTaskManager servkit)
+create_test     (tBgTaskManager)

@@ -38,7 +38,7 @@ set(servkit_src
 
 # -- Targets
 # --- shared
-add_lib(servkit SHARED ${servkit_src} ${servkit_int_hdr} ${servkit_exp_hdr})
+add_lib(servkit SHARED ${servkit_src})
 add_lib_build_def(servkit include/servkit/exportsym.h SK)
 add_comp_def(servkit SERVKIT_MAJ=${servkit_maj_ver})
 add_comp_def(servkit SERVKIT_MIN=${servkit_min_ver})
