@@ -31,10 +31,3 @@ endforeach(subdir)
 
 # add the main project
 include(servkit.cmake)
-
-# add catHttpServer
-add_exe(catHttpServer src/catHttpServer/catHttpServer.c)
-add_comp_flag(catHttpServer -pthread)
-add_link_flag(catHttpServer -pthread)
-link_libs(catHttpServer servkit)
-add_dependencies(check catHttpServer)

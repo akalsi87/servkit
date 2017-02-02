@@ -14,4 +14,5 @@ create_test     (tConnection)
 
 add_test_exe    (tBgTaskManager tBgTaskManager.c)
 test_link_libs  (tBgTaskManager servkit)
+add_link_flag   (tBgTaskManager -pthread)
 create_test     (tBgTaskManager)

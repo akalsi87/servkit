@@ -60,6 +60,8 @@ set_tgt_ver(servkit ${servkit_lib_ver} ${servkit_lib_compat_ver})
 # --- add catHttpServer
 add_exe(catHttpServer src/catHttpServer/catHttpServer.c)
 link_libs(catHttpServer servkit)
+add_link_flag(catHttpServer -pthread)
+add_dependencies(check catHttpServer)
 
 # -- Install!
 install_hdr(${servkit_exp_hdr})

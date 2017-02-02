@@ -58,7 +58,7 @@ TEST_FUNC( CreateAndDestroy )
 
 #define NUM_TASKS 1000
 
-TEST_FUNC( TenTasks )
+TEST_FUNC( CreateAndAddTasksAndWaitAndDestroy )
 {
   skBgTaskManager mgr;
   numInit = 0;
@@ -69,12 +69,12 @@ TEST_FUNC( TenTasks )
   for (int i = 0; i < NUM_TASKS; ++i) {
       skBgTaskManagerAddTask(&mgr, (void*)(size_t)i);
   }
-  while (numDone != NUM_TASKS) { }
+  while (*(volatile int*)(&numDone) != NUM_TASKS) { }
   TEST_TRUE(skBgTaskManagerDestroy(&mgr) == 0);
 }
 
 void SetupTests(void)
 {
     REG_TEST( CreateAndDestroy );
-    REG_TEST( TenTasks );
+    REG_TEST( CreateAndAddTasksAndWaitAndDestroy );
 }
