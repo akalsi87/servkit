@@ -17,6 +17,7 @@ set(SRCS src/servkit)
 # export
 set(servkit_exp_hdr
     ${INCL}/asserts.h;
+    ${INCL}/bgtaskmanager.h;
     ${INCL}/config.h;
     ${INCL}/connection.h;
     ${INCL}/likely.h;
@@ -30,6 +31,7 @@ set(servkit_int_hdr
 # -- Sources
 set(servkit_src
     ${SRCS}/asserts.c;
+    ${SRCS}/bgtaskmanager.c;
     ${SRCS}/connection.c;
     ${SRCS}/net.c;
     )

@@ -649,7 +649,7 @@ void catHttpServerHandleAccept(catHttpServer * server, skConn req)
             goto closeRequestConn;
         }
         if (thisTime == 0) {
-            skTraceF(SK_LVL_WARN, "Connection fd=%d was abruptly disconnected. Closing.", req.fd);
+            skDbgTraceF(SK_LVL_WARN, "Connection fd=%d was abruptly disconnected. Closing.", req.fd);
             goto closeRequestConn;
         }
         numRead += thisTime;
