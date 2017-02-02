@@ -7,6 +7,7 @@
 #include <servkit/asserts.h>
 
 #include <string.h>
+#include <stdlib.h>
 
 static
 void skFillOOMError(char* err)
@@ -171,8 +172,27 @@ int skConnWrite(char* err, skConn* conn, char const* buff, int count)
 
 int skConnClose(char* err, skConn* conn)
 {
+    if (conn->fd == -1) return SK_NET_OK;
     if (skNetClose(err, conn->fd) != SK_NET_ERR) {
+        char const** strPtr = 0;
         conn->fd = -1;
+        switch (conn->kind) {
+            case SK_TCP_CLIENT:
+            case SK_UNIX_CLIENT:
+                strPtr = &(conn->client.serverName);
+                break;
+            case SK_TCP_SERVER:
+                strPtr = &(conn->tcpServer.bindAddr);
+                break;
+            case SK_UNIX_SERVER:
+                strPtr = &(conn->unixServer.path);
+                break;
+            default:
+                skAssertMsg(0, "Invalid connection kind!");
+                break;
+        }
+        free((void*)*strPtr);
+        *strPtr = 0;
         return SK_CONN_OK;
     } else {
         return SK_CONN_ERR;

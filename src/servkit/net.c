@@ -435,13 +435,19 @@ int skNetRead(int fd, char* buf, int count)
 int skNetWrite(int fd, char const* buf, int count)
 {
     ssize_t nWritten, totalLen = 0;
+    int err;
     while(totalLen != count) {
         nWritten = write(fd,buf,count-totalLen);
         if (nWritten == 0) {
             return totalLen;
         }
         if (nWritten == -1) {
-            return -1;
+            if (((err = errno) != EWOULDBLOCK) && (err != EAGAIN)) {
+                skDbgTraceF(SK_LVL_WARN, "Failure writing data: %s.", strerror(errno));
+                return -1;
+            } else {
+                continue;
+            }
         }
         totalLen += nWritten;
         buf += nWritten;
@@ -565,7 +571,18 @@ int skNetGenericAccept(char* err, int s, struct sockaddr *sa, socklen_t *len)
     while(1) {
         fd = accept(s,sa,len);
         if (fd == -1) {
-            if (errno == EINTR) {
+            if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN) {
+                if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                    fd_set sock;
+                    FD_ZERO(&sock);
+                    FD_SET(s, &sock);
+                waitSock:
+                    if (select(1, &sock, 0, 0, 0) == -1) {
+                        if (errno == EINTR) {
+                            goto waitSock;
+                        }
+                    }
+                }
                 continue;
             } else {
                 skNetSetError(err, "accept: %s", strerror(errno));
