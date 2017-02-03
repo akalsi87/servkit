@@ -7,6 +7,7 @@
 
 #include <servkit/asserts.h>
 #include <servkit/connection.h>
+#include <servkit/bgtaskmanager.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,7 +23,7 @@
 #include <pwd.h>
 #include <signal.h>
 
-#include <pthread.h>
+// #include <pthread.h>
 
 // static char errBuf[SK_CONN_ERR_LEN];
 // static skConn server;
@@ -677,39 +678,64 @@ void catHttpServerHandleAccept(catHttpServer * server, skConn req)
     free(line);
 }
 
-typedef struct
-{
-    catHttpServer * server;
-    skConn req;
-} threadTask;
+// typedef struct
+// {
+//     catHttpServer * server;
+//     skConn req;
+// } threadTask;
+
+// static
+// void* mtAccept(void* value)
+// {
+//     threadTask* task = (threadTask*)value;
+//     catHttpServerHandleAccept(task->server, task->req);
+//     free(task);
+//     return 0;
+// }
+
+// static
+// void catHttpServerHandleAcceptThread(catHttpServer * server, skConn req)
+// {
+//     pthread_t thrd;
+//     threadTask* arg = malloc(sizeof(threadTask));
+//     if (!arg) {
+//         skTraceF(SK_LVL_ERR, "Out of memory!");
+//         return;
+//     }
+//     arg->server = server;
+//     arg->req = req;
+//     pthread_create(&thrd, 0, mtAccept, arg);
+//     pthread_detach(thrd);
+// }
+
+static skBgTaskManager taskMgr;
 
 static
-void* mtAccept(void* value)
+skBgDataPtr consumerDataCreate(void* ctxt)
 {
-    threadTask* task = (threadTask*)value;
-    catHttpServerHandleAccept(task->server, task->req);
-    free(task);
-    return 0;
+    return ctxt;
 }
 
 static
-void catHttpServerHandleAcceptThread(catHttpServer * server, skConn req)
+void consumerDataDestroy(void* ctxt, skBgDataPtr data)
 {
-    pthread_t thrd;
-    threadTask* arg = malloc(sizeof(threadTask));
-    if (!arg) {
-        skTraceF(SK_LVL_ERR, "Out of memory!");
-        return;
-    }
-    arg->server = server;
-    arg->req = req;
-    pthread_create(&thrd, 0, mtAccept, arg);
-    pthread_detach(thrd);
+}
+
+static
+void consumer(skBgDataPtr data, skBgTaskPtr task)
+{
+    catHttpServer* server = (catHttpServer*)data;
+    skConn conn = *(skConn*)task;
+    free(task);
+    skAssert(conn.fd != -1);
+    catHttpServerHandleAccept(server, conn);
 }
 
 static
 void catHttpServerLoop(catHttpServer* server)
 {
+    skBgTaskManagerInit(&taskMgr, 1, server, consumerDataCreate,
+                        consumerDataDestroy, consumer);
     FD_SET(server->server.fd, &server->listenerFds);
     for (;;) {
         skConn req;
@@ -735,9 +761,19 @@ void catHttpServerLoop(catHttpServer* server)
             return;
         }
 
-        catHttpServerHandleAcceptThread(server, req);
+        if (req.fd == -1) {
+            continue;
+        }
+
+        // catHttpServerHandleAcceptThread(server, req);
+        {
+            skConn* hpReq = (skConn*)malloc(sizeof(skConn));
+            *hpReq = req;
+            skBgTaskManagerAddTask(&taskMgr, hpReq);
+        }
     }
     FD_CLR(server->server.fd, &server->listenerFds);
+    skBgTaskManagerDestroy(&taskMgr, 1);
 }
 
 static

@@ -8,57 +8,53 @@
 
 #include <servkit/config.h>
 
-typedef void* skBgConsumerTaskPtr;
-typedef void* skBgConsumerDataPtr;
-typedef void (*skBgConsumer)(skBgConsumerDataPtr, skBgConsumerTaskPtr);
-typedef skBgConsumerDataPtr (*skBgConsumerDataCreate)(void);
-typedef void (*skBgConsumerDataDestroy)(skBgConsumerDataPtr);
+typedef void* skBgTaskPtr;
+typedef void* skBgDataPtr;
+typedef void (*skBgFunc)(skBgDataPtr, skBgTaskPtr);
+typedef skBgDataPtr (*skBgDataCreate)(void*);
+typedef void (*skBgDataDestroy)(void*, skBgDataPtr);
 
 typedef struct _skBgTaskNode
 {
     struct _skBgTaskNode* prev;
     struct _skBgTaskNode* next;
-    skBgConsumerTaskPtr task;
+    skBgTaskPtr task;
 } skBgTaskNode;
 
 typedef struct
 {
-    skBgConsumerDataPtr* consumerData;
+    skBgDataPtr* consumerData;
     void* threads;
-    skBgConsumer consumerFunc;
-    skBgConsumerDataDestroy consumerDataDestroyer;
+    skBgFunc consumerFunc;
+    skBgDataDestroy consumerDataDestroyer;
     int numThreads;
     int shutdown;
     void* mutex;
     void* cndVar;
     skBgTaskNode head;
+    void* ctxt;
+    int consumeRemaining;
 } skBgTaskManager;
 
 SK_API
 /*!
  *
  */
-int skBgTaskManagerInit(skBgTaskManager* mgr, int numThreads,
-                        skBgConsumerDataCreate dataCreate,
-                        skBgConsumerDataDestroy dataDestroy,
-                        skBgConsumer consumer);
+int skBgTaskManagerInit(skBgTaskManager* mgr, int numThreads, void* ctxt,
+                        skBgDataCreate dataCreate,
+                        skBgDataDestroy dataDestroy,
+                        skBgFunc consumer);
 
 SK_API
 /*!
  *
  */
-void skBgTaskManagerAddTask(skBgTaskManager* mgr, skBgConsumerTaskPtr task);
+void skBgTaskManagerAddTask(skBgTaskManager* mgr, skBgTaskPtr task);
 
 SK_API
 /*!
  *
  */
-void skBgTaskManagerShutdown(skBgTaskManager* mgr);
-
-SK_API
-/*!
- *
- */
-int skBgTaskManagerDestroy(skBgTaskManager* mgr);
+int skBgTaskManagerDestroy(skBgTaskManager* mgr, int finishTasks);
 
 #endif/*_SERVKIT_BGTASKMANAGER_H_*/

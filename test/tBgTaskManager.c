@@ -23,7 +23,7 @@ static int numInit = 0;
 static int numDone = 0;
 
 static
-skBgConsumerDataPtr consumerDataCreate()
+skBgDataPtr consumerDataCreate(void* ctxt)
 {
     int curr = numInit++;
     data[curr].idx = curr;
@@ -32,45 +32,45 @@ skBgConsumerDataPtr consumerDataCreate()
 }
 
 static
-void consumerDataDestroy()
+void consumerDataDestroy(void* ctxt, skBgDataPtr data)
 {
 }
 
 static
-void consumer(skBgConsumerDataPtr data, skBgConsumerTaskPtr task)
+void consumer(skBgDataPtr data, skBgTaskPtr task)
 {
     consumerData* cdata = (consumerData*)data;
     int taskIdx = (int)(size_t)task;
-    skDbgTraceF(SK_LVL_INFO, "Thread %d consumed task %d.", cdata->idx, taskIdx);
+    // skDbgTraceF(SK_LVL_INFO, "Thread %d consumed task %d.", cdata->idx, taskIdx);
     (void)taskIdx;
     __sync_add_and_fetch(cdata->pNumDone, 1);
 }
 
 TEST_FUNC( CreateAndDestroy )
 {
-  skBgTaskManager mgr;
-  numInit = 0;
-  TEST_TRUE(skBgTaskManagerInit(&mgr, NUM_THREADS, consumerDataCreate,
+    skBgTaskManager mgr;
+    numInit = 0;
+    TEST_TRUE(skBgTaskManagerInit(&mgr, NUM_THREADS, 0, consumerDataCreate,
                                 consumerDataDestroy, consumer) == 0);
-  TEST_TRUE(numInit == NUM_THREADS);
-  TEST_TRUE(skBgTaskManagerDestroy(&mgr) == 0);
+    TEST_TRUE(numInit == NUM_THREADS);
+    TEST_TRUE(skBgTaskManagerDestroy(&mgr, 0) == 0);
 }
 
 #define NUM_TASKS 1000
 
 TEST_FUNC( CreateAndAddTasksAndWaitAndDestroy )
 {
-  skBgTaskManager mgr;
-  numInit = 0;
-  numDone = 0;
-  TEST_TRUE(skBgTaskManagerInit(&mgr, NUM_THREADS, consumerDataCreate,
+    skBgTaskManager mgr;
+    numInit = 0;
+    numDone = 0;
+    TEST_TRUE(skBgTaskManagerInit(&mgr, NUM_THREADS, 0, consumerDataCreate,
                                 consumerDataDestroy, consumer) == 0);
-  TEST_TRUE(numInit == NUM_THREADS);
-  for (int i = 0; i < NUM_TASKS; ++i) {
-      skBgTaskManagerAddTask(&mgr, (void*)(size_t)i);
-  }
-  while (*(volatile int*)(&numDone) != NUM_TASKS) { }
-  TEST_TRUE(skBgTaskManagerDestroy(&mgr) == 0);
+    TEST_TRUE(numInit == NUM_THREADS);
+    for (int i = 0; i < NUM_TASKS; ++i) {
+        skBgTaskManagerAddTask(&mgr, (void*)(size_t)i);
+    }
+    TEST_TRUE(skBgTaskManagerDestroy(&mgr, 1) == 0);
+    TEST_TRUE(numDone == NUM_TASKS);
 }
 
 void SetupTests(void)

@@ -23,6 +23,8 @@ void initEmpty(skBgTaskManager* mgr)
     mgr->cndVar = 0;
     mgr->head.prev = &(mgr->head);
     mgr->head.next = &(mgr->head);
+    mgr->ctxt = 0;
+    mgr->consumeRemaining = 0;
 }
 
 static
@@ -31,7 +33,7 @@ int cleanupTaskManager(skBgTaskManager* mgr)
     if (mgr->consumerData) {
         int const numThreads = mgr->numThreads;
         for (int i = 0; i < numThreads; ++i) {
-            mgr->consumerDataDestroyer(mgr->consumerData[i]);
+            mgr->consumerDataDestroyer(mgr->ctxt, mgr->consumerData[i]);
         }
     }
     free(mgr->consumerData);
@@ -42,7 +44,7 @@ int cleanupTaskManager(skBgTaskManager* mgr)
     if (mgr->cndVar) pthread_cond_destroy((pthread_cond_t*)mgr->cndVar);
     free(mgr->cndVar);
     mgr->cndVar = 0;
-    //skAssert(mgr->head.next == &(mgr->head) && mgr->head.prev == mgr->head.next);
+    skAssert(mgr->head.next == &(mgr->head) && mgr->head.prev == mgr->head.next);
     initEmpty(mgr);
     return -1;
 }
@@ -58,7 +60,7 @@ void* threadRunner(void* taskmgr)
     pthread_cond_t* cndVar = (pthread_cond_t*)mgr->cndVar;
     skBgTaskNode* firstNode = &(mgr->head);
     skBgTaskNode* node;
-    skBgConsumerTaskPtr taskPtr;
+    skBgTaskPtr taskPtr;
 
     for (; idx < mgr->numThreads; ++idx) {
         if (pthread_equal(self, threads[idx])) {
@@ -85,13 +87,33 @@ void* threadRunner(void* taskmgr)
         mgr->consumerFunc(mgr->consumerData[idx], taskPtr);
     }
 
+    if (mgr->consumeRemaining) {
+        int done = 0;
+        while (1) {
+            pthread_mutex_lock(mutex);
+            if ((node = firstNode->next) != firstNode) {
+                firstNode->next = node->next;
+                node->next->prev = firstNode;
+                taskPtr = node->task;
+            } else {
+                done = 1;
+            }
+            pthread_mutex_unlock(mutex);
+            if (done) {
+                break;
+            }
+            free(node);
+            mgr->consumerFunc(mgr->consumerData[idx], taskPtr);
+        }
+    }
+
     return 0;
 }
 
-int skBgTaskManagerInit(skBgTaskManager* mgr, int numThreads,
-                        skBgConsumerDataCreate dataCreate,
-                        skBgConsumerDataDestroy dataDestroy,
-                        skBgConsumer consumer)
+int skBgTaskManagerInit(skBgTaskManager* mgr, int numThreads, void* ctxt,
+                        skBgDataCreate dataCreate,
+                        skBgDataDestroy dataDestroy,
+                        skBgFunc consumer)
 {
     pthread_t* threads;
     pthread_mutex_t* mutex;
@@ -102,12 +124,12 @@ int skBgTaskManagerInit(skBgTaskManager* mgr, int numThreads,
     mgr->consumerDataDestroyer = dataDestroy;
     mgr->shutdown = 0;
     mgr->consumerData =
-        (skBgConsumerDataPtr*)malloc(sizeof(skBgConsumerDataPtr) * numThreads);
+        (skBgDataPtr*)malloc(sizeof(skBgDataPtr) * numThreads);
     if (!mgr->consumerData) {
         return cleanupTaskManager(mgr);
     }
     for (int i = 0; i < numThreads; ++i) {
-        mgr->consumerData[i] = dataCreate();
+        mgr->consumerData[i] = dataCreate(ctxt);
     }
     threads = malloc(sizeof(pthread_t)*numThreads);
     if (!threads) {
@@ -146,10 +168,11 @@ int skBgTaskManagerInit(skBgTaskManager* mgr, int numThreads,
   //       }
   //   }
     mgr->numThreads = numThreads;
+    mgr->ctxt = ctxt;
     return 0;
 }
 
-void skBgTaskManagerAddTask(skBgTaskManager* mgr, skBgConsumerTaskPtr task)
+void skBgTaskManagerAddTask(skBgTaskManager* mgr, skBgTaskPtr task)
 {
     pthread_mutex_t* mutex = (pthread_mutex_t*)mgr->mutex;
     pthread_cond_t* cndVar = (pthread_cond_t*)mgr->cndVar;
@@ -168,13 +191,15 @@ void skBgTaskManagerAddTask(skBgTaskManager* mgr, skBgConsumerTaskPtr task)
     pthread_mutex_unlock(mutex);
 }
 
-void skBgTaskManagerShutdown(skBgTaskManager* mgr)
+static
+void taskManagerShutdown(skBgTaskManager* mgr, int consumeRemainingTasks)
 {
     pthread_t* threads = (pthread_t*)mgr->threads;
     pthread_mutex_t* mutex = (pthread_mutex_t*)mgr->mutex;
     pthread_cond_t* cndVar = (pthread_cond_t*)mgr->cndVar;
     pthread_mutex_lock(mutex);
     mgr->shutdown = 1;
+    mgr->consumeRemaining = consumeRemainingTasks;
     pthread_cond_broadcast(cndVar);
     pthread_mutex_unlock(mutex);
     if (threads) {
@@ -188,9 +213,9 @@ void skBgTaskManagerShutdown(skBgTaskManager* mgr)
     }
 }
 
-int skBgTaskManagerDestroy(skBgTaskManager* mgr)
+int skBgTaskManagerDestroy(skBgTaskManager* mgr, int finishTasks)
 {
-    skBgTaskManagerShutdown(mgr);
+    taskManagerShutdown(mgr, finishTasks);
     cleanupTaskManager(mgr);
     return 0;
 }
