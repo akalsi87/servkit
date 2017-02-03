@@ -26,7 +26,7 @@ SK_API
 void skSetTraceFile(FILE* file);
 
 /* Asserts */
-#ifndef NDEBUG
+#if !defined(NDEBUG)
 #define skAssert(expr) ((void)(!!(expr) ? 0 : _skAssert(#expr, __FILE__, __LINE__)))
 #define skAssertMsg(expr,msg) ((void)(!!(expr) ? 0 : _skAssert((msg), __FILE__, __LINE__)))
 #else

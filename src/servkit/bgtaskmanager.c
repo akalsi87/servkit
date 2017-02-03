@@ -69,7 +69,6 @@ void* threadRunner(void* taskmgr)
     }
     skAssert(idx < mgr->numThreads);
 
-    // try to pop an element
     while (1) {
         pthread_mutex_lock(mutex);
         while ((node = firstNode->next) == firstNode && !mgr->shutdown) {
@@ -157,16 +156,6 @@ int skBgTaskManagerInit(skBgTaskManager* mgr, int numThreads, void* ctxt,
         skAssert(!fail);
         (void)fail;
     }
-  // waitTillDone:
-  //   {
-  //       int done = 0;
-  //       pthread_mutex_lock(mutex);
-  //       done = mgr->numThreads == 0;
-  //       pthread_mutex_unlock(mutex);
-  //       if (!done) {
-  //           goto waitTillDone;
-  //       }
-  //   }
     mgr->numThreads = numThreads;
     mgr->ctxt = ctxt;
     return 0;

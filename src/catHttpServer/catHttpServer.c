@@ -23,312 +23,6 @@
 #include <pwd.h>
 #include <signal.h>
 
-// #include <pthread.h>
-
-// static char errBuf[SK_CONN_ERR_LEN];
-// static skConn server;
-
-// static char const* exename = 0;
-// static char const* dirnm = 0;
-// static char const* hostname = "localhost";
-// static int port = 8080;
-// static char const* username = 0;
-
-// typedef void(*arg_cbk_t)(char const* val);
-
-// typedef struct
-// {
-//     char shortId;
-//     char const* longId;
-//     arg_cbk_t cbk;
-//     char const* descr;
-//     int args;
-// } arg_t;
-
-// static
-// void setExeName(char const* val)
-// {
-//     int i = strlen(val)-1;
-//     for (;i >= 0; --i) {
-//         if (val[i] == '/') {
-//             exename = val+i+1;
-//             break;
-//         }
-//     }
-//     exename = (i == -1) ? val : (val+i+1);
-// }
-
-// static
-// void setHostname(char const* val)
-// {
-//     hostname = val;
-// }
-
-// static
-// void setPort(char const* val)
-// {
-//     char* end = 0;
-//     port = (int)strtol(val, &end, 10);
-//     if (*end != '\0') {
-//         errorAndDie(1, "Not an integer port or has non numeric trailing data.");
-//     }
-// }
-
-// static
-// void setCurrDir(char const* val)
-// {
-//     dirnm = val;
-// }
-
-// static
-// void changeCurrDir()
-// {
-//     if (!dirnm) return;
-//     int rv = chdir(dirnm);
-//     if (rv != 0) {
-//         errorAndDie(1, "%s.", strerror(rv));
-//     }
-// }
-
-// static
-// void setUserName(char const* val)
-// {
-//     username = val;
-// }
-
-// static
-// void printUsage(char const* val);
-
-// static
-// void changeUserName()
-// {
-//     if (!username) return;
-//     errno = 0;
-//     struct passwd* res = getpwnam(username);
-//     if (!res) {
-//         errorAndDie(1, "%s.", strerror(errno));
-//     }
-//     if (setgid(res->pw_gid) != 0) {
-//         errorAndDie(1, "%s.", strerror(errno));
-//     }
-//     if (setuid(res->pw_uid) != 0) {
-//         errorAndDie(1, "%s.", strerror(errno));
-//     }
-// }
-
-// static const arg_t opts[] =
-// {
-//     {'h', "help", printUsage, "This menu.", 0},
-//     {'p', "port", setPort, "Port to bind to.", 1},
-//     {'n', "host", setHostname, "Hostname to bind to.", 1},
-//     {'d', "dir", setCurrDir, "Directory to serve.", 1},
-//     {'u', "user", setUserName, "User to serve files as after binding.", 1}
-// };
-
-// static
-// void usage()
-// {
-//     int const numOpts = sizeof(opts)/sizeof(opts[0]);
-//     printf("Usage for %s\n  %s ", exename, exename);
-//     for (int i = 0; i < numOpts; ++i) {
-//         if (opts[i].args == 0) {
-//             printf("[-%c|--%s] ", opts[i].shortId, opts[i].longId);
-//         } else {
-//             printf("[-%c|--%s <%s>] ", opts[i].shortId, opts[i].longId, opts[i].longId);
-//         }
-//     }
-//     puts("\nOption descriptions:");
-//     for (int i = 0; i < numOpts; ++i) {
-//         printf("  %s: %s\n", opts[i].longId, opts[i].descr);
-//     }
-//     exit(0);
-// }
-
-// static
-// void printUsage(char const* val)
-// {
-//     usage();
-// }
-
-// static
-// void parseArguments(int argc, char const* argv[])
-// {
-//     setExeName(argv[0]);
-//     --argc; // for main executable
-//     ++argv;
-//     int const numArgs = sizeof(opts)/sizeof(arg_t);
-//     for (int arg = 0; arg < argc;) {
-//         char const* strArg = argv[arg];
-//         int strLen = (int)strlen(strArg);
-//         if (strLen < 2) {
-//             errorAndDie(1, "Expected an option, with - prefix.");
-//         }
-//         if (strLen == 2) {
-//             if (strArg[0] != '-') errorAndDie(1, "Expected an option, with - prefix.");
-//         } else {
-//             if (strArg[0] != '-' || strArg[1] != '-') errorAndDie(1, "Expected an option, with -- prefix.");
-//         }
-//         int i = 0;
-//         for (; i < numArgs; ++i) {
-//             if (((strLen == 2) && opts[i].shortId == strArg[1]) ||
-//                 (strcmp(opts[i].longId, strArg+2) == 0)) {
-//                 opts[i].cbk(opts[i].args == 0 ? 0 : argv[arg+1]);
-//                 arg += 1+opts[i].args;
-//                 break;
-//             }
-//         }
-//         if (i == numArgs) {
-//             errorAndDie(1, "Unexpected option: %s.", strArg);
-//         }
-//     }
-// }
-
-// static
-// void handleIntr(int sig)
-// {
-//     exit(0);
-// }
-
-// static
-// void createServer()
-// {
-//     dieUnless(skConnInitTcpServer(errBuf, &server, port, hostname, 200, 0) == SK_CONN_OK);
-//     // dieUnless(skNetNonBlock(errBuf, server.fd));
-//     changeUserName();
-//     changeCurrDir();
-//     signal(SIGPIPE, SIG_IGN);
-//     signal(SIGINT, handleIntr);
-// }
-
-// static
-// void writeHeaders(skConn* req)
-// {
-//     char buf[1024];
-//     int len;
-//     // (void)filename;  /* could use filename to determine file type */
-
-//     strcpy(buf, "HTTP/1.0 200 OK\r\n");
-//     len = strlen(buf);
-//     if (skConnWrite(errBuf, req, buf, len) < len) {
-//         dieUnless(skConnClose(errBuf, req) == SK_CONN_OK);
-//         return;
-//     }
-//     strcpy(buf, "Server: catHttpServer/0.1.0\r\n");
-//     len = strlen(buf);
-//     if (skConnWrite(errBuf, req, buf, len) < len) {
-//         dieUnless(skConnClose(errBuf, req) == SK_CONN_OK);
-//         return;
-//     }
-//     strcpy(buf, "Content-Type: text/html\r\n\r\n");
-//     len = strlen(buf);
-//     if (skConnWrite(errBuf, req, buf, len) < len) {
-//         dieUnless(skConnClose(errBuf, req) == SK_CONN_OK);
-//         return;
-//     }
-//     strcpy(buf, "\r\n");
-//     len = strlen(buf);
-//     if (skConnWrite(errBuf, req, buf, len) < len) {
-//         dieUnless(skConnClose(errBuf, req) == SK_CONN_OK);
-//         return;
-//     }
-// }
-
-// static
-// void serveFile(skConn* req, int fd)
-// {
-//     int rv;
-//     char buff[4096];
-//     dieUnless(skNetNonBlock(errBuf, req->fd) == SK_NET_OK);
-//     writeHeaders(req);
-//     // dieUnless(skConnSetSendTimeout(errBuf, req, 1) != SK_NET_OK);
-//     do {
-//         rv = skNetRead(fd, buff, 4096);
-//         if (rv == SK_NET_ERR) {
-//             strcpy(errBuf, strerror(rv));
-//         }
-//         dieUnless(rv != SK_NET_ERR);
-//         if (skNetWrite(req->fd, buff, rv) < rv) {
-//             break;
-//         }
-//     } while (rv != 0);
-// }
-
-// static
-// int readLine(skConn const* req, char* buff, int size)
-// {
-//     char* buffOrig = buff;
-//     while (1) {
-//         char ch;
-//         int rv = recv(req->fd, &ch, 1, 0);
-//         if (rv == SK_NET_ERR && errno != EWOULDBLOCK && errno != EAGAIN) {
-//             strcpy(errBuf, strerror(errno));
-//             dieUnless(0);
-//         }
-//         if (rv == SK_NET_ERR && errno == EPIPE) {
-//             return -1;
-//         }
-//         *buff++ = ch;
-//         if (ch == '\n') {
-//             *buff = '\0';
-//             break;
-//         }
-//     }
-//     return buff-buffOrig;
-// }
-
-// static char* line = 0;
-// static int cap = 0;
-
-// void runOld(void)
-// {
-//   // recreate_server:
-//     createServer();
-//     if (!line) {
-//         cap = 81;
-//         line = malloc(cap);
-//     }
-//     while (1) {
-//         skConn req;
-//         int fd;
-//         int numRead = 0;
-//         int thisTime = 0;
-
-//         dieUnless(skConnAccept(errBuf, &server, &req) == SK_CONN_OK);
-//         // dieUnless(skNetNonBlock(errBuf, req.fd) != SK_CONN_ERR);
-
-//         while (1) {
-//             if (numRead == cap) {
-//                 int newcap = 2*cap-1;
-//                 char* newline = realloc(line, newcap);
-//                 dieUnless(newline != 0);
-//                 line = newline;
-//                 cap = newcap;
-//             }
-//             thisTime = readLine(&req, &line[numRead], cap-numRead);
-//             if (thisTime == -1) {
-//                 goto closeRequestConn;
-//             }
-//             numRead += thisTime;
-//             if ((thisTime == 1 && line[numRead-1] == '\n') ||
-//                 (thisTime == 2 && line[numRead-2] == '\r' && line[numRead-1] == '\n')) {
-//                 break;
-//             }
-//         }
-//         skDbgTraceF(SK_LVL_SUCC, "Read header from fd=%d\n%s<---", req.fd, line);
-//         line[0] = '\0';
-//         fd = open("foo.txt", 0);
-//         if (fd == -1) {
-//             skTraceF(SK_LVL_WARN, "Could not open file.");
-//             goto closeRequestConn;
-//         }
-//         serveFile(&req, fd);
-//         close(fd);
-//   closeRequestConn:
-//         dieUnless(skConnClose(errBuf, &req) == SK_CONN_OK);
-//     }
-//     free(line);
-// }
-
 /*---------------------------------------------------------------------*/
 
 typedef struct
@@ -488,12 +182,9 @@ static
 int catHttpServerReadLine(catHttpServer* server, skConn const* req, char* buff, int size)
 {
     char* buffOrig = buff;
-    fd_set fds;
     char ch;
     int rv;
     int err;
-    FD_ZERO(&fds);
-    FD_SET(req->fd, &fds);
     while (1) {
         rv = recv(req->fd, &ch, 1, 0);
         if (rv == SK_NET_ERR) {
@@ -541,9 +232,6 @@ void catHttpServerParseOptions(catHttpServer* server, int argc, char const* argv
     server->port = 8080;
     server->errBuf[0] = '\0';
     server->state = CHS_OK;
-    FD_ZERO(&server->listenerFds);
-    FD_ZERO(&server->responseFds);
-
     server->exename = argv[0];
     --argc; ++argv;
     int const numArgs = sizeof(OPTS)/sizeof(catHttpServerOption);
@@ -614,7 +302,7 @@ void catHttpServerParseOptions(catHttpServer* server, int argc, char const* argv
 }
 
 static
-void catHttpServerHandleAccept(catHttpServer * server, skConn req)
+void catHttpServerHandleAccept(catHttpServer* server, skConn* req)
 {
     char* line = 0;
     int cap = 81;
@@ -628,9 +316,9 @@ void catHttpServerHandleAccept(catHttpServer * server, skConn req)
         return;
     }
 
-    // dieUnless(skConnAccept(errBuf, &server, &req) == SK_CONN_OK);
-    if (skNetNonBlock(&server->errBuf[0], req.fd) == SK_CONN_ERR) {
-        skTraceF(SK_LVL_WARN, "Could not set non blocking; fd=%d", req.fd);
+    // dieUnless(skConnAccept(errBuf, &server, req) == SK_CONN_OK);
+    if (skNetNonBlock(&server->errBuf[0], req->fd) == SK_CONN_ERR) {
+        skTraceF(SK_LVL_WARN, "Could not set non blocking; fd=%d", req->fd);
         goto closeRequestConn;
     }
 
@@ -645,12 +333,12 @@ void catHttpServerHandleAccept(catHttpServer * server, skConn req)
             line = newline;
             cap = newcap;
         }
-        thisTime = catHttpServerReadLine(server, &req, &line[numRead], cap-numRead);
+        thisTime = catHttpServerReadLine(server, req, &line[numRead], cap-numRead);
         if (thisTime == -1) {
             goto closeRequestConn;
         }
         if (thisTime == 0) {
-            skDbgTraceF(SK_LVL_WARN, "Connection fd=%d was abruptly disconnected. Closing.", req.fd);
+            skDbgTraceF(SK_LVL_WARN, "Connection fd=%d was abruptly disconnected. Closing.", req->fd);
             goto closeRequestConn;
         }
         numRead += thisTime;
@@ -660,53 +348,19 @@ void catHttpServerHandleAccept(catHttpServer * server, skConn req)
         }
     }
 
-    skDbgTraceF(SK_LVL_SUCC, "Read header from fd=%d\n%s<---", req.fd, line);
+    skDbgTraceF(SK_LVL_SUCC, "Read header from fd=%d\n%s<---", req->fd, line);
     line[0] = '\0';
     fd = open("index.html", 0);
-    if (fd == -1) {
-        skTraceF(SK_LVL_WARN, "Could not open file.");
-        goto closeRequestConn;
-    }
 
-    catHttpServerServeFile(server, &req, fd);
+    catHttpServerServeFile(server, req, fd);
     close(fd);
 
   closeRequestConn:
-    if (skNetClose(&server->errBuf[0], req.fd) == SK_CONN_ERR) {
-        skTraceF(SK_LVL_WARN, "Could not close fd=%d", req.fd);
+    if (req->fd != -1 && skNetClose(&server->errBuf[0], req->fd) == SK_CONN_ERR) {
+        skTraceF(SK_LVL_WARN, "Could not close fd=%d", req->fd);
     }
     free(line);
 }
-
-// typedef struct
-// {
-//     catHttpServer * server;
-//     skConn req;
-// } threadTask;
-
-// static
-// void* mtAccept(void* value)
-// {
-//     threadTask* task = (threadTask*)value;
-//     catHttpServerHandleAccept(task->server, task->req);
-//     free(task);
-//     return 0;
-// }
-
-// static
-// void catHttpServerHandleAcceptThread(catHttpServer * server, skConn req)
-// {
-//     pthread_t thrd;
-//     threadTask* arg = malloc(sizeof(threadTask));
-//     if (!arg) {
-//         skTraceF(SK_LVL_ERR, "Out of memory!");
-//         return;
-//     }
-//     arg->server = server;
-//     arg->req = req;
-//     pthread_create(&thrd, 0, mtAccept, arg);
-//     pthread_detach(thrd);
-// }
 
 static skBgTaskManager taskMgr;
 
@@ -727,20 +381,18 @@ void consumer(skBgDataPtr data, skBgTaskPtr task)
     catHttpServer* server = (catHttpServer*)data;
     skConn conn = *(skConn*)task;
     free(task);
-    skAssert(conn.fd != -1);
-    catHttpServerHandleAccept(server, conn);
+    catHttpServerHandleAccept(server, &conn);
 }
 
 static
 void catHttpServerLoop(catHttpServer* server)
 {
-    skBgTaskManagerInit(&taskMgr, 1, server, consumerDataCreate,
+    skBgTaskManagerInit(&taskMgr, 3, server, consumerDataCreate,
                         consumerDataDestroy, consumer);
     FD_SET(server->server.fd, &server->listenerFds);
     for (;;) {
         skConn req;
         struct timeval timeout = {0, 50};
-      //acceptNewConn:
         if (select(1, &server->listenerFds, 0, 0, &timeout) == -1) {
             if (errno == EWOULDBLOCK || errno == EAGAIN || errno == ETIMEDOUT) {
                 continue;
@@ -750,11 +402,6 @@ void catHttpServerLoop(catHttpServer* server)
                 break;
             }
         }
-        // skAssert(FD_ISSET(server->server.fd, &server->listenerFds));
-        // if (skConnSetNonBlockOption(&server->errBuf[0], &server->server, 0) == SK_CONN_ERR) {
-        //     skTraceF(SK_LVL_WARN, "Failed to set socket non-blocking; fd=%d", server->server.fd);
-        //     continue;
-        // }
 
         if (skConnAccept(&server->errBuf[0], &server->server, &req) == SK_CONN_ERR) {
             skTraceF(SK_LVL_WARN, "Failed to accept connection; fd=%d", server->server.fd);
@@ -762,11 +409,11 @@ void catHttpServerLoop(catHttpServer* server)
         }
 
         if (req.fd == -1) {
+            skDbgTraceF(SK_LVL_ERR, "Could not accept a connection. fd=-1");
             continue;
         }
 
-        // catHttpServerHandleAcceptThread(server, req);
-        {
+        {/* add task to the queue */
             skConn* hpReq = (skConn*)malloc(sizeof(skConn));
             *hpReq = req;
             skBgTaskManagerAddTask(&taskMgr, hpReq);
@@ -783,11 +430,6 @@ void catHttpServerRun(catHttpServer* server)
         catHttpServerSetError(server, 1);
         return;
     }
-    // if (skNetNonBlock(&server->errBuf[0], server->server.fd) == SK_NET_ERR) {
-    //     catHttpServerSetError(server, 1);
-    //     return;
-    // }
-    signal(SIGPIPE, SIG_IGN);
     catHttpServerChangeCurrDir(server);
     if (!catHttpServerOK(server)) {
         return;
@@ -805,9 +447,22 @@ void catHttpServerCloseListener(catHttpServer* server)
     }
 }
 
+static
+void sigPipe(int signo)
+{
+    signal(SIGPIPE, sigPipe);
+}
+
 int main(int argc, char const* argv[])
 {
     catHttpServer srv;
+    sigset_t s;
+
+    signal(SIGPIPE, sigPipe);
+    sigemptyset(&s);
+    sigaddset(&s, SIGPIPE);
+    pthread_sigmask(SIG_BLOCK, &s, 0);
+
     catHttpServerParseOptions(&srv, argc, argv);
     if (!catHttpServerOK(&srv)) {
         skTraceF(SK_LVL_ERR, "%s", catHttpServerGetError(&srv));
