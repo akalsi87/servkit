@@ -173,6 +173,7 @@ void catHttpServerServeFile(catHttpServer* server, skConn* req, int fd)
         }
         warnUnless(rv != SK_NET_ERR);
         if (skNetWrite(req->fd, buff, rv) < rv) {
+            skTraceF(SK_LVL_WARN, "Failed to write complete buffer. fd=%d.", req->fd);
             break;
         }
     } while (rv != 0);
@@ -220,85 +221,6 @@ static
 char const* catHttpServerGetError(catHttpServer const* server)
 {
     return &(server->errBuf[0]);
-}
-
-static
-void catHttpServerParseOptions(catHttpServer* server, int argc, char const* argv[])
-{
-    skAssert(OPTS[HELP_OPT_IDX].shortId == 'h');
-    server->exename = server->dirname = server->username = server->line = 0;
-    server->hostname = "127.0.0.1";
-    server->cap = 0;
-    server->port = 8080;
-    server->errBuf[0] = '\0';
-    server->state = CHS_OK;
-    server->exename = argv[0];
-    --argc; ++argv;
-    int const numArgs = sizeof(OPTS)/sizeof(catHttpServerOption);
-    for (int arg = 0; arg < argc;) {
-        char const* strArg = argv[arg];
-        int strLen = (int)strlen(strArg);
-        if (strLen < 2) {
-            catHttpServerSetErrorMsg(server, 1, "Expected an option, with - prefix.");
-            return;
-        }
-        if (strLen == 2) {
-            if (strArg[0] != '-') {
-                catHttpServerSetErrorMsg(server, 1, "Expected an option, with - prefix.");
-                return;
-            }
-        } else {
-            if (strArg[0] != '-' || strArg[1] != '-') {
-                catHttpServerSetErrorMsg(server, 1, "Expected an option, with -- prefix.");
-                return;
-            }
-        }
-        int i = 0;
-        for (; i < numArgs; ++i) {
-            if (((strLen == 2) && OPTS[i].shortId == strArg[1]) ||
-                (strcmp(OPTS[i].longId, strArg+2) == 0)) {
-                if (arg+OPTS[i].args >= argc) {
-                    sprintf(server->errBuf, "Insufficient number of arguments for the %s option", OPTS[i].longId);
-                    catHttpServerSetError(server, 1);
-                    return;
-                }
-                switch (OPTS[i].shortId) {
-                    case 'h':
-                        usage(server);
-                        catHttpServerSetError(server, 0);
-                        break;
-                    case 'n':
-                        server->hostname = argv[arg+1];
-                        break;
-                    case 'p':
-                    {
-                        char* end;
-                        server->port = (int)strtol(argv[arg+1], &end, 10);
-                        if (end != argv[arg+1] + strlen(argv[arg+1])) {
-                            catHttpServerSetErrorMsg(server, 1, "Non numeric port specified: %s", argv[arg+1]);
-                            return;
-                        }
-                    }
-                        break;
-                    case 'd':
-                        server->dirname = argv[arg+1];
-                        break;
-                    case 'u':
-                        server->username = argv[arg+1];
-                        break;
-                    default:
-                        skAssert(0);
-                        break;
-                }
-                arg += 1+OPTS[i].args;
-                break;
-            }
-        }
-        if (i == numArgs) {
-            catHttpServerSetErrorMsg(server, 1, "Unexpected option: %s", strArg);
-            return;
-        }
-    }
 }
 
 static
@@ -448,9 +370,82 @@ void catHttpServerCloseListener(catHttpServer* server)
 }
 
 static
-void sigPipe(int signo)
+void catHttpServerParseOptions(catHttpServer* server, int argc, char const* argv[])
 {
-    signal(SIGPIPE, sigPipe);
+    skAssert(OPTS[HELP_OPT_IDX].shortId == 'h');
+    server->exename = server->dirname = server->username = server->line = 0;
+    server->hostname = "127.0.0.1";
+    server->cap = 0;
+    server->port = 8080;
+    server->errBuf[0] = '\0';
+    server->state = CHS_OK;
+    server->exename = argv[0];
+    --argc; ++argv;
+    int const numArgs = sizeof(OPTS)/sizeof(catHttpServerOption);
+    for (int arg = 0; arg < argc;) {
+        char const* strArg = argv[arg];
+        int strLen = (int)strlen(strArg);
+        if (strLen < 2) {
+            catHttpServerSetErrorMsg(server, 1, "Expected an option, with - prefix.");
+            return;
+        }
+        if (strLen == 2) {
+            if (strArg[0] != '-') {
+                catHttpServerSetErrorMsg(server, 1, "Expected an option, with - prefix.");
+                return;
+            }
+        } else {
+            if (strArg[0] != '-' || strArg[1] != '-') {
+                catHttpServerSetErrorMsg(server, 1, "Expected an option, with -- prefix.");
+                return;
+            }
+        }
+        int i = 0;
+        for (; i < numArgs; ++i) {
+            if (((strLen == 2) && OPTS[i].shortId == strArg[1]) ||
+                (strcmp(OPTS[i].longId, strArg+2) == 0)) {
+                if (arg+OPTS[i].args >= argc) {
+                    sprintf(server->errBuf, "Insufficient number of arguments for the %s option", OPTS[i].longId);
+                    catHttpServerSetError(server, 1);
+                    return;
+                }
+                switch (OPTS[i].shortId) {
+                    case 'h':
+                        usage(server);
+                        catHttpServerSetError(server, 0);
+                        break;
+                    case 'n':
+                        server->hostname = argv[arg+1];
+                        break;
+                    case 'p':
+                    {
+                        char* end;
+                        server->port = (int)strtol(argv[arg+1], &end, 10);
+                        if (end != argv[arg+1] + strlen(argv[arg+1])) {
+                            catHttpServerSetErrorMsg(server, 1, "Non numeric port specified: %s", argv[arg+1]);
+                            return;
+                        }
+                    }
+                        break;
+                    case 'd':
+                        server->dirname = argv[arg+1];
+                        break;
+                    case 'u':
+                        server->username = argv[arg+1];
+                        break;
+                    default:
+                        skAssert(0);
+                        break;
+                }
+                arg += 1+OPTS[i].args;
+                break;
+            }
+        }
+        if (i == numArgs) {
+            catHttpServerSetErrorMsg(server, 1, "Unexpected option: %s", strArg);
+            return;
+        }
+    }
 }
 
 int main(int argc, char const* argv[])
@@ -458,7 +453,7 @@ int main(int argc, char const* argv[])
     catHttpServer srv;
     sigset_t s;
 
-    signal(SIGPIPE, sigPipe);
+    signal(SIGPIPE, SIG_IGN);
     sigemptyset(&s);
     sigaddset(&s, SIGPIPE);
     pthread_sigmask(SIG_BLOCK, &s, 0);

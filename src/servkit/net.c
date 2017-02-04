@@ -443,7 +443,7 @@ int skNetWrite(int fd, char const* buf, int count)
         }
         if (nWritten == -1) {
             if (((err = errno) != EWOULDBLOCK) && (err != EAGAIN)) {
-                skDbgTraceF(SK_LVL_WARN, "Failure writing data: %s.", strerror(errno));
+                skDbgTraceF(SK_LVL_WARN, "Failure writing data to fd=%d: %s.", fd, strerror(errno));
                 return -1;
             } else {
                 continue;

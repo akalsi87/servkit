@@ -10,7 +10,7 @@
 
 #include <unistd.h>
 
-#define NUM_THREADS 4
+#define NUM_THREADS 16
 
 typedef struct
 {
@@ -41,7 +41,7 @@ void consumer(skBgDataPtr data, skBgTaskPtr task)
 {
     consumerData* cdata = (consumerData*)data;
     int taskIdx = (int)(size_t)task;
-    // skDbgTraceF(SK_LVL_INFO, "Thread %d consumed task %d.", cdata->idx, taskIdx);
+    skTraceF(SK_LVL_INFO, "Thread %d consumed task %d.", cdata->idx, taskIdx);
     (void)taskIdx;
     __sync_add_and_fetch(cdata->pNumDone, 1);
 }
@@ -56,7 +56,7 @@ TEST_FUNC( CreateAndDestroy )
     TEST_TRUE(skBgTaskManagerDestroy(&mgr, 0) == 0);
 }
 
-#define NUM_TASKS 1000
+#define NUM_TASKS 50
 
 TEST_FUNC( CreateAndAddTasksAndWaitAndDestroy )
 {
